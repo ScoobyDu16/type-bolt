@@ -38,9 +38,9 @@ io.on('connection', (socket)=>{
         socket.join(roomId);
         socket.room= roomId;
         if(rooms[roomId]===undefined){
-            rooms[roomId]= {users: [], position: 1};
+            rooms[roomId]= {users: [], position: 1, quote: ''};
         }
-        rooms[roomId].users.push({id: socket.id, progress: 0, position: null, bg: `#${(Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0')}`});
+        rooms[roomId].users.push({id: socket.id, wpm: 0, progress: 0, position: null, bg: `#${(Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0')}`});
         console.log(`Room ${roomId} Details : `, rooms[roomId]);
         socket.to(roomId).emit('user-joined', rooms[roomId].users);
         socket.emit('user-joined', rooms[roomId].users);
@@ -51,7 +51,13 @@ io.on('connection', (socket)=>{
         leaveRoom(socket, roomId, rooms[roomId].users)
     });
 
-    socket.on('increase-progress', ({roomId, progress=0, position=rooms[roomId].position})=>{
+    socket.on('set-quote', ({roomId, quote})=>{
+        rooms[roomId].quote= quote;
+        socket.to(roomId).emit('set-quote-done', rooms[roomId].quote);
+        socket.emit('set-quote-done', rooms[roomId].quote);
+    })
+
+    socket.on('increase-progress', ({roomId, progress=0, position=rooms[roomId].position, wpm})=>{
         if(rooms[roomId]===undefined){
             rooms[roomId]= {users: [], position: 1};
         }
@@ -60,9 +66,11 @@ io.on('connection', (socket)=>{
                 rooms[roomId].position= 1;
                 rooms[roomId].users[i].progress= 0;
                 rooms[roomId].users[i].position= null; 
+                rooms[roomId].users[i].wpm= 0;
             } else{
                 if(rooms[roomId].users[i].id===socket.id){
                     rooms[roomId].users[i].progress= progress;
+                    rooms[roomId].users[i].wpm= wpm;
                 }
                 if(rooms[roomId].users[i].progress===100 && rooms[roomId].users[i].position===null){
                     rooms[roomId].users[i].position= rooms[roomId].position++;
